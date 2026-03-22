@@ -1,0 +1,30 @@
+component Counter {
+
+  props {
+    label: string
+    initialValue: number = 0
+  }
+
+  state {
+    count: number = 0
+  }
+
+  client {
+    handleIncrement = () => {
+      state.count += 1
+    }
+
+    handleDecrement = () => {
+      state.count -= 1
+    }
+  }
+
+  view {
+    <div className="counter">
+      <h2>{props.label}</h2>
+      <p>{state.count}</p>
+      <button onClick={client.handleDecrement}>-</button>
+      <button onClick={client.handleIncrement}>+</button>
+    </div>
+  }
+}
