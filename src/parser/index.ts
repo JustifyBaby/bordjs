@@ -4,15 +4,30 @@
 
 import { Lexer, Token, TokenType } from "../lexer";
 import {
-  BordFile, ComponentNode,
-  PropsBlock, StateBlock, ServerBlock, ClientBlock, ViewBlock,
-  FieldDecl, ServerAssignment, ClientFunction, Param,
-  TypeAliasNode, TypeExpr, ObjectField,
-  Expr, Span, Position,
+  BordFile,
+  ComponentNode,
+  PropsBlock,
+  StateBlock,
+  ServerBlock,
+  ClientBlock,
+  ViewBlock,
+  FieldDecl,
+  ServerAssignment,
+  ClientFunction,
+  Param,
+  TypeAliasNode,
+  TypeExpr,
+  ObjectField,
+  Expr,
+  Span,
+  Position,
 } from "./ast";
 
 export class ParseError extends Error {
-  constructor(message: string, public span: Span) {
+  constructor(
+    message: string,
+    public span: Span,
+  ) {
     super(`[Parse] ${message} at line ${span.start.line}:${span.start.column}`);
   }
 }
@@ -34,16 +49,26 @@ export class Parser {
     const typeAliases: TypeAliasNode[] = [];
 
     while (!this.isEOF()) {
-      if (this.check("TYPE"))      { typeAliases.push(this.parseTypeAlias()); continue; }
+      if (this.check("TYPE")) {
+        typeAliases.push(this.parseTypeAlias());
+        continue;
+      }
       if (this.check("COMPONENT")) break;
-      throw this.error(`Expected 'component' or 'type', got '${this.peek().value}'`);
+      throw this.error(
+        `Expected 'component' or 'type', got '${this.peek().value}'`,
+      );
     }
 
     const component = this.parseComponent();
 
     while (!this.isEOF()) {
-      if (this.check("TYPE")) { typeAliases.push(this.parseTypeAlias()); continue; }
-      throw this.error(`Unexpected token '${this.peek().value}' after component`);
+      if (this.check("TYPE")) {
+        typeAliases.push(this.parseTypeAlias());
+        continue;
+      }
+      throw this.error(
+        `Unexpected token '${this.peek().value}' after component`,
+      );
     }
 
     return {
@@ -62,28 +87,50 @@ export class Parser {
     const name = this.expect("IDENT").value;
     this.expect("LBRACE");
 
-    let props:  PropsBlock  | undefined;
-    let state:  StateBlock  | undefined;
+    let props: PropsBlock | undefined;
+    let state: StateBlock | undefined;
     let server: ServerBlock | undefined;
     let client: ClientBlock | undefined;
-    let view:   ViewBlock   | undefined;
+    let view: ViewBlock | undefined;
 
     while (!this.check("RBRACE") && !this.isEOF()) {
       switch (this.peek().type) {
-        case "PROPS":  props  = this.parsePropsBlock();  break;
-        case "STATE":  state  = this.parseStateBlock();  break;
-        case "SERVER": server = this.parseServerBlock(); break;
-        case "CLIENT": client = this.parseClientBlock(); break;
-        case "VIEW":   view   = this.parseViewBlock();   break;
-        default: throw this.error(`Unknown block '${this.peek().value}' inside component`);
+        case "PROPS":
+          props = this.parsePropsBlock();
+          break;
+        case "STATE":
+          state = this.parseStateBlock();
+          break;
+        case "SERVER":
+          server = this.parseServerBlock();
+          break;
+        case "CLIENT":
+          client = this.parseClientBlock();
+          break;
+        case "VIEW":
+          view = this.parseViewBlock();
+          break;
+        default:
+          throw this.error(
+            `Unknown block '${this.peek().value}' inside component`,
+          );
       }
     }
 
     this.expect("RBRACE");
-    if (!view) throw this.error(`Component '${name}' is missing required 'view' block`);
+    if (!view)
+      throw this.error(`Component '${name}' is missing required 'view' block`);
 
-    return { kind: "Component", name, props, state, server, client, view,
-             span: { start, end: this.prev().position } };
+    return {
+      kind: "Component",
+      name,
+      props,
+      state,
+      server,
+      client,
+      view,
+      span: { start, end: this.prev().position },
+    };
   }
 
   // ---- Blocks ----
@@ -95,10 +142,15 @@ export class Parser {
     const fields: FieldDecl[] = [];
     while (!this.check("RBRACE") && !this.isEOF()) {
       fields.push(this.parseFieldDecl(true));
-      this.tryConsume("SEMICOLON"); this.tryConsume("COMMA");
+      this.tryConsume("SEMICOLON");
+      this.tryConsume("COMMA");
     }
     this.expect("RBRACE");
-    return { kind: "PropsBlock", fields, span: { start, end: this.prev().position } };
+    return {
+      kind: "PropsBlock",
+      fields,
+      span: { start, end: this.prev().position },
+    };
   }
 
   private parseStateBlock(): StateBlock {
@@ -108,10 +160,15 @@ export class Parser {
     const fields: FieldDecl[] = [];
     while (!this.check("RBRACE") && !this.isEOF()) {
       fields.push(this.parseFieldDecl(false));
-      this.tryConsume("SEMICOLON"); this.tryConsume("COMMA");
+      this.tryConsume("SEMICOLON");
+      this.tryConsume("COMMA");
     }
     this.expect("RBRACE");
-    return { kind: "StateBlock", fields, span: { start, end: this.prev().position } };
+    return {
+      kind: "StateBlock",
+      fields,
+      span: { start, end: this.prev().position },
+    };
   }
 
   private parseServerBlock(): ServerBlock {
@@ -124,7 +181,11 @@ export class Parser {
       this.tryConsume("SEMICOLON");
     }
     this.expect("RBRACE");
-    return { kind: "ServerBlock", assignments, span: { start, end: this.prev().position } };
+    return {
+      kind: "ServerBlock",
+      assignments,
+      span: { start, end: this.prev().position },
+    };
   }
 
   private parseClientBlock(): ClientBlock {
@@ -136,16 +197,23 @@ export class Parser {
       functions.push(this.parseClientFunction());
     }
     this.expect("RBRACE");
-    return { kind: "ClientBlock", functions, span: { start, end: this.prev().position } };
+    return {
+      kind: "ClientBlock",
+      functions,
+      span: { start, end: this.prev().position },
+    };
   }
 
   private parseViewBlock(): ViewBlock {
     const start = this.peek().position;
     this.expect("VIEW");
     // Consume the `{` token, then sync the lexer and capture raw JSX
-    this.expect("LBRACE");
-    const jsx = this.captureRaw();
-    return { kind: "ViewBlock", jsx, span: { start, end: this.prev().position } };
+    const raw = this.expect("RAW_BLOCK");
+    return {
+      kind: "ViewBlock",
+      jsx: raw.value,
+      span: { start, end: this.prev().position },
+    };
   }
 
   // ---- Declarations ----
@@ -166,8 +234,13 @@ export class Parser {
       defaultValue = this.parseSimpleExpr();
     }
 
-    return { kind: "FieldDecl", name, typeAnnotation, defaultValue,
-             span: { start, end: this.prev().position } };
+    return {
+      kind: "FieldDecl",
+      name,
+      typeAnnotation,
+      defaultValue,
+      span: { start, end: this.prev().position },
+    };
   }
 
   private parseServerAssignment(): ServerAssignment {
@@ -187,15 +260,24 @@ export class Parser {
       this.expect("AWAIT");
       // Capture the rest of the expression until semicolon
       const raw = this.captureUntilSemicolon();
-      value = { kind: "AwaitExpr", expression: raw,
-                span: { start, end: this.prev().position } };
+      value = {
+        kind: "AwaitExpr",
+        expression: raw,
+        span: { start, end: this.prev().position },
+      };
     } else {
       value = this.parseSimpleExpr();
     }
 
     this.tryConsume("SEMICOLON");
-    return { kind: "ServerAssignment", name, typeAnnotation, value, isAsync,
-             span: { start, end: this.prev().position } };
+    return {
+      kind: "ServerAssignment",
+      name,
+      typeAnnotation,
+      value,
+      isAsync,
+      span: { start, end: this.prev().position },
+    };
   }
 
   private parseClientFunction(): ClientFunction {
@@ -204,13 +286,19 @@ export class Parser {
     // or: handleXxx = () => { ... }
     // or: handleXxx = async () => { ... }
     let leadAsync = false;
-    if (this.check("ASYNC")) { this.advance(); leadAsync = true; }
+    if (this.check("ASYNC")) {
+      this.advance();
+      leadAsync = true;
+    }
 
     const name = this.expect("IDENT").value;
     this.expect("EQ");
 
     let isAsync = leadAsync;
-    if (this.check("ASYNC")) { this.advance(); isAsync = true; }
+    if (this.check("ASYNC")) {
+      this.advance();
+      isAsync = true;
+    }
 
     this.expect("LPAREN");
     const params = this.parseParams();
@@ -219,8 +307,14 @@ export class Parser {
     this.expect("LBRACE");
     const body = this.captureRaw();
 
-    return { kind: "ClientFunction", name, params, isAsync, body,
-             span: { start, end: this.prev().position } };
+    return {
+      kind: "ClientFunction",
+      name,
+      params,
+      isAsync,
+      body,
+      span: { start, end: this.prev().position },
+    };
   }
 
   private parseParams(): Param[] {
@@ -230,8 +324,12 @@ export class Parser {
       const name = this.expect("IDENT").value;
       let typeAnnotation: TypeExpr | null = null;
       if (this.tryConsume("COLON")) typeAnnotation = this.parseTypeExpr();
-      params.push({ kind: "Param", name, typeAnnotation,
-                    span: { start, end: this.prev().position } });
+      params.push({
+        kind: "Param",
+        name,
+        typeAnnotation,
+        span: { start, end: this.prev().position },
+      });
       this.tryConsume("COMMA");
     }
     return params;
@@ -246,8 +344,12 @@ export class Parser {
     this.expect("EQ");
     const definition = this.parseTypeExpr();
     this.tryConsume("SEMICOLON");
-    return { kind: "TypeAlias", name, definition,
-             span: { start, end: this.prev().position } };
+    return {
+      kind: "TypeAlias",
+      name,
+      definition,
+      span: { start, end: this.prev().position },
+    };
   }
 
   // ---- Type Expressions ----
@@ -262,26 +364,38 @@ export class Parser {
       const name = this.expect("IDENT").value;
       const primitives = ["string", "number", "boolean", "null", "undefined"];
       if (primitives.includes(name)) {
-        base = { kind: "PrimitiveType",
-                 name: name as "string"|"number"|"boolean"|"null"|"undefined",
-                 span: { start, end: this.prev().position } };
+        base = {
+          kind: "PrimitiveType",
+          name: name as "string" | "number" | "boolean" | "null" | "undefined",
+          span: { start, end: this.prev().position },
+        };
       } else {
-        base = { kind: "ReferenceType", name,
-                 span: { start, end: this.prev().position } };
+        base = {
+          kind: "ReferenceType",
+          name,
+          span: { start, end: this.prev().position },
+        };
       }
     }
 
     // Postfix: string[]
     while (this.check("LBRACKET") && this.peekAt(1).type === "RBRACKET") {
-      this.advance(); this.advance();
-      base = { kind: "ArrayType", elementType: base,
-               span: { start, end: this.prev().position } };
+      this.advance();
+      this.advance();
+      base = {
+        kind: "ArrayType",
+        elementType: base,
+        span: { start, end: this.prev().position },
+      };
     }
 
     // Postfix: string?
     if (this.tryConsume("QUESTION")) {
-      base = { kind: "OptionalType", innerType: base,
-               span: { start, end: this.prev().position } };
+      base = {
+        kind: "OptionalType",
+        innerType: base,
+        span: { start, end: this.prev().position },
+      };
     }
 
     return base;
@@ -300,13 +414,24 @@ export class Parser {
       const typeAnnotation = this.parseTypeExpr();
       let defaultValue: Expr | null = null;
       if (this.tryConsume("EQ")) defaultValue = this.parseSimpleExpr();
-      this.tryConsume("SEMICOLON"); this.tryConsume("COMMA");
-      fields.push({ kind: "ObjectField", name, typeAnnotation, defaultValue, optional,
-                    span: { fStart, end: this.prev().position } as unknown as Span });
+      this.tryConsume("SEMICOLON");
+      this.tryConsume("COMMA");
+      fields.push({
+        kind: "ObjectField",
+        name,
+        typeAnnotation,
+        defaultValue,
+        optional,
+        span: { fStart, end: this.prev().position } as unknown as Span,
+      });
     }
 
     this.expect("RBRACE");
-    return { kind: "ObjectType", fields, span: { start, end: this.prev().position } };
+    return {
+      kind: "ObjectType",
+      fields,
+      span: { start, end: this.prev().position },
+    };
   }
 
   // ---- Simple expression parser (for default values / server assignments) ----
@@ -314,13 +439,51 @@ export class Parser {
   private parseSimpleExpr(): Expr {
     const start = this.peek().position;
     const tok = this.peek();
-    if (tok.type === "STRING")  { this.advance(); return { kind: "StringLiteral",  value: tok.value,              span: { start, end: this.prev().position } }; }
-    if (tok.type === "NUMBER")  { this.advance(); return { kind: "NumberLiteral",  value: parseFloat(tok.value),  span: { start, end: this.prev().position } }; }
-    if (tok.type === "TRUE")    { this.advance(); return { kind: "BooleanLiteral", value: true,                   span: { start, end: this.prev().position } }; }
-    if (tok.type === "FALSE")   { this.advance(); return { kind: "BooleanLiteral", value: false,                  span: { start, end: this.prev().position } }; }
-    if (tok.type === "NULL")    { this.advance(); return { kind: "NullLiteral",                                   span: { start, end: this.prev().position } }; }
+    if (tok.type === "STRING") {
+      this.advance();
+      return {
+        kind: "StringLiteral",
+        value: tok.value,
+        span: { start, end: this.prev().position },
+      };
+    }
+    if (tok.type === "NUMBER") {
+      this.advance();
+      return {
+        kind: "NumberLiteral",
+        value: parseFloat(tok.value),
+        span: { start, end: this.prev().position },
+      };
+    }
+    if (tok.type === "TRUE") {
+      this.advance();
+      return {
+        kind: "BooleanLiteral",
+        value: true,
+        span: { start, end: this.prev().position },
+      };
+    }
+    if (tok.type === "FALSE") {
+      this.advance();
+      return {
+        kind: "BooleanLiteral",
+        value: false,
+        span: { start, end: this.prev().position },
+      };
+    }
+    if (tok.type === "NULL") {
+      this.advance();
+      return {
+        kind: "NullLiteral",
+        span: { start, end: this.prev().position },
+      };
+    }
     const raw = this.captureUntilSemicolon();
-    return { kind: "RawExpr", value: raw, span: { start, end: this.prev().position } };
+    return {
+      kind: "RawExpr",
+      value: raw,
+      span: { start, end: this.prev().position },
+    };
   }
 
   // ---- Raw capture: syncs lexer pos to token stream, then reads char-by-char ----
@@ -339,7 +502,10 @@ export class Parser {
     const raw = this.lexer.readRawBlock();
 
     // Fast-forward token stream past all tokens inside the captured block
-    while (!this.isEOF() && this.tokens[this.pos].position.offset <= this.lexer.currentPos) {
+    while (
+      !this.isEOF() &&
+      this.tokens[this.pos].position.offset <= this.lexer.currentPos
+    ) {
       this.pos++;
     }
 
@@ -358,10 +524,20 @@ export class Parser {
 
   // ---- Token stream helpers ----
 
-  private peek(): Token    { return this.tokens[this.pos]; }
-  private peekAt(n: number): Token { return this.tokens[Math.min(this.pos + n, this.tokens.length - 1)]; }
-  private prev(): Token    { return this.tokens[Math.max(this.pos - 1, 0)]; }
-  private isEOF(): boolean { return this.tokens[this.pos].type === "EOF"; }
+  private peek(): Token {
+    return this.tokens[this.pos];
+  }
+  private peekAt(n: number): Token {
+    return this.tokens[Math.min(this.pos + n, this.tokens.length - 1)];
+  }
+  private prev(): Token {
+    return this.tokens[Math.max(this.pos - 1, 0)];
+  }
+  private isEOF(): boolean {
+    return (
+      this.pos >= this.tokens.length || this.tokens[this.pos].type === "EOF"
+    );
+  }
 
   private advance(): Token {
     const t = this.tokens[this.pos];
@@ -369,16 +545,23 @@ export class Parser {
     return t;
   }
 
-  private check(type: TokenType): boolean { return this.tokens[this.pos].type === type; }
+  private check(type: TokenType): boolean {
+    return this.tokens[this.pos].type === type;
+  }
 
   private expect(type: TokenType): Token {
     if (!this.check(type))
-      throw this.error(`Expected '${type}', got '${this.peek().type}' ('${this.peek().value}')`);
+      throw this.error(
+        `Expected '${type}', got '${this.peek().type}' ('${this.peek().value}')`,
+      );
     return this.advance();
   }
 
   private tryConsume(type: TokenType): boolean {
-    if (this.check(type)) { this.advance(); return true; }
+    if (this.check(type)) {
+      this.advance();
+      return true;
+    }
     return false;
   }
 

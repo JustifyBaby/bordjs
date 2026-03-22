@@ -47,6 +47,7 @@ export const TOKEN_TYPES = [
   "MINUS_EQ",
   "STAR_EQ",
   "SLASH_EQ",
+  "RAW_BLOCK",
   "EOF",
 ] as const;
 
@@ -98,9 +99,16 @@ export class Lexer {
     while (this.pos < this.src.length) {
       this.skipWhitespaceAndComments();
       if (this.pos >= this.src.length) break;
-      tokens.push(this.readToken());
+      const tok = this.readToken();
+      tokens.push(tok);
+      if (tok.type === "VIEW") {
+        this.skipWhitespaceAndComments();
+        const bracePos = this.currentPosition();
+        this.advance(); // `{` を消費
+        const raw = this.readRawBlock();
+        tokens.push({ type: "RAW_BLOCK", value: raw, position: bracePos });
+      }
     }
-    tokens.push(this.makeToken("EOF", "", this.currentPosition()));
     return tokens;
   }
 
